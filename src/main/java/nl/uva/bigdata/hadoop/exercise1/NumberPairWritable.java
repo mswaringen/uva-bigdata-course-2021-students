@@ -26,12 +26,14 @@ public class NumberPairWritable implements Writable {
 
   @Override
   public void write(DataOutput out) throws IOException {
-    // TODO Implement me
+    out.writeInt(this.firstNumber);
+    out.writeInt(this.secondNumber);
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
-    // TODO Implement me
+    this.firstNumber = in.readInt();
+    this.secondNumber = in.readInt();
   }
 
   @Override

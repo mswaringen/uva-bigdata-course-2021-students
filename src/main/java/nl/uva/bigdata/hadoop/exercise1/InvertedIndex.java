@@ -13,7 +13,8 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class InvertedIndex extends HadoopJob {
 
@@ -37,16 +38,54 @@ public class InvertedIndex extends HadoopJob {
 
     public static class PageParser extends Mapper<Object, Text, Text, IntWritable> {
 
+        private final static IntWritable PAGE_ID = new IntWritable();
+        private final Text WORD = new Text();
+
+        private static final Pattern SEPARATOR = Pattern.compile("\t");
+
         public void map(Object key, Text value, Mapper.Context context) throws IOException, InterruptedException {
-            // TODO Implement me
+
+            String[] tokens = SEPARATOR.split(value.toString());
+            int pageId = Integer.parseInt(tokens[0]);
+            String pageText = tokens[2].replaceAll(",", "").replaceAll("\\.", "");
+
+            PAGE_ID.set(pageId);
+
+            HashSet<String> alreadySeen = new HashSet<>();
+
+            StringTokenizer tokenizer = new StringTokenizer(pageText);
+
+            while (tokenizer.hasMoreTokens()) {
+                String currentWord = tokenizer.nextToken().toLowerCase();
+
+                if (!alreadySeen.contains(currentWord)) {
+                    alreadySeen.add(currentWord);
+                    WORD.set(currentWord);
+                    context.write(WORD, PAGE_ID);
+                }
+            }
         }
     }
 
     public static class IndexEntryBuilder extends Reducer<Text,IntWritable,Text,NullWritable> {
 
+        private final Text OUTPUT = new Text();
+
         public void reduce(Text word, Iterable<IntWritable> pageIds, Context context)
                 throws IOException, InterruptedException {
-            // TODO Implement me
+
+            List<Integer> allPageIds = new ArrayList<>();
+            for (IntWritable pageId : pageIds) {
+                allPageIds.add(pageId.get());
+            }
+
+            int numOccurrences = allPageIds.size();
+
+            for (int pageId : allPageIds) {
+                OUTPUT.set(word.toString() + "\t" + pageId + "\t" + numOccurrences);
+                context.write(OUTPUT, NullWritable.get());
+            }
+
         }
     }
 
